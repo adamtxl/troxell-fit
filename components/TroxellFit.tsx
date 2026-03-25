@@ -6,7 +6,7 @@ import type { DayLog, WorkoutLog, UserProfile } from '@/lib/types'
 // ── User profiles ─────────────────────────────────────────────────────────────
 const USERS: Record<string, UserProfile> = {
   adam: {
-    id: 'adam', name: 'Adam', startWeight: 367, goalWeight: 275, startBF: 44,
+    id: 'adam', name: 'Adam', startWeight: 338, goalWeight: 275, startBF: 44,
     proteinMin: 180, proteinGoal: 190, calGoal: 880, waterGoal: 128,
     color: '#c4f135', accentColor: '#5a7a00',
     supplements: [
@@ -16,7 +16,7 @@ const USERS: Record<string, UserProfile> = {
     workouts: true,
   },
   tammy: {
-    id: 'tammy', name: 'Tammy', startWeight: 382, goalWeight: 299, startBF: null,
+    id: 'tammy', name: 'Tammy', startWeight: 355.2, goalWeight: 310, startBF: null,
     proteinMin: 120, proteinGoal: 130, calGoal: 1400, waterGoal: 96,
     color: '#f472b6', accentColor: '#9d174d',
     supplements: [
@@ -519,30 +519,63 @@ function WorkoutTab({ workoutLogs, save, active, setActive, wType, setWType, pha
 }
 
 // ── Progress Tab ───────────────────────────────────────────────────────────────
+type Range = '7d' | '30d' | '6m' | 'all'
+const RANGES: { id: Range; label: string; days: number | null }[] = [
+  { id: '7d',  label: '7D',   days: 7   },
+  { id: '30d', label: '30D',  days: 30  },
+  { id: '6m',  label: '6M',   days: 182 },
+  { id: 'all', label: 'ALL',  days: null },
+]
+
+function filterByRange(logs: DayLog[], days: number | null) {
+  if (!days) return logs
+  const cutoff = new Date()
+  cutoff.setDate(cutoff.getDate() - days)
+  const cutStr = cutoff.toISOString().split('T')[0]
+  return logs.filter(l => l.date >= cutStr)
+}
+
 function ProgressTab({ allLogs, workoutLogs, user, adamLogs, tammyLogs }: {
   allLogs: DayLog[]; workoutLogs: WorkoutLog[]; user: UserProfile; adamLogs: DayLog[]; tammyLogs: DayLog[]
 }) {
   const [showBoth, setShowBoth] = useState(false)
-  const chartData = addRollingAvg(allLogs.filter(l => l.weight))
+  const [range, setRange] = useState<Range>('all')
 
-  const bothData = (() => {
-    const al = addRollingAvg(adamLogs.filter(l => l.weight))
-    const tl = addRollingAvg(tammyLogs.filter(l => l.weight))
-    const dm: Record<string, { date: string; adam?: number; adamAvg?: number; tammy?: number; tammyAvg?: number }> = {}
-    al.forEach(l => { dm[l.date] = { ...dm[l.date], date: l.date.slice(5), adam: l.weight ?? undefined, adamAvg: l.avg7 } })
-    tl.forEach(l => { dm[l.date] = { ...dm[l.date], date: l.date.slice(5), tammy: l.weight ?? undefined, tammyAvg: l.avg7 } })
-    return Object.values(dm).sort((a, b) => a.date.localeCompare(b.date))
-  })()
+  const activeDays = RANGES.find(r => r.id === range)?.days ?? null
 
+  // All-time for headline stats (total lost, to go always makes sense all-time)
   const last     = [...allLogs].reverse().find(l => l.weight)
   const curW     = last ? Number(last.weight) : user.startWeight
   const lost     = +(user.startWeight - curW).toFixed(1)
   const toGo     = +(curW - user.goalWeight).toFixed(1)
-  const protDays = allLogs.filter(l => l.protein >= user.proteinMin).length
-  const calDays  = allLogs.filter(l => l.calories > 0 && l.calories <= user.calGoal).length
-  const avgProt  = allLogs.filter(l => l.protein > 0).length
-    ? Math.round(allLogs.filter(l => l.protein > 0).reduce((s, l) => s + l.protein, 0) / allLogs.filter(l => l.protein > 0).length)
+
+  // Range-filtered for adherence stats
+  const rangeLogs  = filterByRange(allLogs, activeDays)
+  const protDays   = rangeLogs.filter(l => l.protein >= user.proteinMin).length
+  const calDays    = rangeLogs.filter(l => l.calories > 0 && l.calories <= user.calGoal).length
+  const avgProt    = rangeLogs.filter(l => l.protein > 0).length
+    ? Math.round(rangeLogs.filter(l => l.protein > 0).reduce((s, l) => s + l.protein, 0) / rangeLogs.filter(l => l.protein > 0).length)
     : 0
+
+  // Chart data filtered by range, rolling avg computed across full history for accuracy
+  const allWithAvg   = addRollingAvg(allLogs.filter(l => l.weight))
+  const chartData    = activeDays
+    ? allWithAvg.filter(l => { const cutoff = new Date(); cutoff.setDate(cutoff.getDate() - activeDays); return l.date >= cutoff.toISOString().split('T')[0] })
+    : allWithAvg
+
+  // Both-mode: merge adam+tammy filtered by range
+  const bothData = (() => {
+    const al = addRollingAvg(adamLogs.filter(l => l.weight))
+    const tl = addRollingAvg(tammyLogs.filter(l => l.weight))
+    const dm: Record<string, { date: string; adam?: number; adamAvg?: number; tammy?: number; tammyAvg?: number }> = {}
+    const cutStr = activeDays ? (() => { const c = new Date(); c.setDate(c.getDate() - activeDays); return c.toISOString().split('T')[0] })() : ''
+    al.filter(l => !cutStr || l.date >= cutStr).forEach(l => { dm[l.date] = { ...dm[l.date], date: l.date.slice(5), adam: l.weight ?? undefined, adamAvg: l.avg7 } })
+    tl.filter(l => !cutStr || l.date >= cutStr).forEach(l => { dm[l.date] = { ...dm[l.date], date: l.date.slice(5), tammy: l.weight ?? undefined, tammyAvg: l.avg7 } })
+    return Object.values(dm).sort((a, b) => a.date.localeCompare(b.date))
+  })()
+
+  // X-axis interval scales with data density
+  const xInterval = (n: number) => n <= 10 ? 0 : n <= 30 ? 2 : n <= 90 ? 6 : n <= 182 ? 13 : 20
 
   const stats = [
     { label: 'Lost',         value: lost,                     unit: 'lbs', color: user.color },
@@ -555,8 +588,16 @@ function ProgressTab({ allLogs, workoutLogs, user, adamLogs, tammyLogs }: {
 
   const tt = { background: C.card, border: `1px solid ${C.border}`, borderRadius: 6, color: C.text, fontSize: 11 }
 
+  // Weight log table: show all entries in selected range, newest first
+  const tableData = (() => {
+    const wa = addRollingAvg(allLogs.filter(l => l.weight))
+    const cutStr = activeDays ? (() => { const c = new Date(); c.setDate(c.getDate() - activeDays); return c.toISOString().split('T')[0] })() : ''
+    return [...wa].filter(l => !cutStr || l.date >= cutStr).reverse()
+  })()
+
   return (
     <>
+      {/* Header row */}
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
         <div style={{ fontFamily: F.display, fontSize: 22, color: user.color, letterSpacing: 3 }}>PROGRESS</div>
         <button onClick={() => setShowBoth(b => !b)} style={{ background: showBoth ? user.color : C.card, border: `1px solid ${showBoth ? user.color : C.border}`, borderRadius: 16, padding: '5px 14px', color: showBoth ? '#000' : C.sub, cursor: 'pointer', fontSize: 11, letterSpacing: 1.5, transition: 'all 0.15s' }}>
@@ -564,6 +605,17 @@ function ProgressTab({ allLogs, workoutLogs, user, adamLogs, tammyLogs }: {
         </button>
       </div>
 
+      {/* Range selector */}
+      <div style={{ display: 'flex', background: C.card, border: `1px solid ${C.border}`, borderRadius: 8, padding: 3, gap: 3, marginBottom: 14 }}>
+        {RANGES.map(r => (
+          <button key={r.id} onClick={() => setRange(r.id)}
+            style={{ flex: 1, padding: '7px 4px', borderRadius: 6, border: 'none', background: range === r.id ? user.color : 'transparent', color: range === r.id ? '#000' : C.sub, cursor: 'pointer', fontFamily: F.display, fontSize: 14, letterSpacing: 1.5, transition: 'all 0.15s' }}>
+            {r.label}
+          </button>
+        ))}
+      </div>
+
+      {/* Stat cards */}
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 8, marginBottom: 12 }}>
         {stats.map(s => (
           <div key={s.label} style={{ background: C.card, border: `1px solid ${C.border}`, borderRadius: 10, padding: '12px 8px', textAlign: 'center' }}>
@@ -573,19 +625,20 @@ function ProgressTab({ allLogs, workoutLogs, user, adamLogs, tammyLogs }: {
         ))}
       </div>
 
+      {/* Chart */}
       <Card>
-        <SL>{showBoth ? 'ADAM & TAMMY — WEIGHT + 7-DAY AVG' : `${user.name.toUpperCase()} — WEIGHT + 7-DAY AVG`}</SL>
+        <SL>{showBoth ? `ADAM & TAMMY — ${RANGES.find(r=>r.id===range)?.label}` : `${user.name.toUpperCase()} — ${RANGES.find(r=>r.id===range)?.label}`}</SL>
         {(showBoth ? bothData.length > 1 : chartData.length > 1) ? (
-          <ResponsiveContainer width="100%" height={210}>
+          <ResponsiveContainer width="100%" height={220}>
             {showBoth ? (
               <LineChart data={bothData} margin={{ top: 5, right: 8, bottom: 0, left: -22 }}>
                 <CartesianGrid strokeDasharray="3 3" stroke={C.border} />
-                <XAxis dataKey="date" tick={{ fill: C.sub, fontSize: 8 }} interval={6} />
+                <XAxis dataKey="date" tick={{ fill: C.sub, fontSize: 8 }} interval={xInterval(bothData.length)} />
                 <YAxis domain={['dataMin - 5', 'dataMax + 5']} tick={{ fill: C.sub, fontSize: 8 }} />
                 <Tooltip contentStyle={tt} />
                 <Legend iconType="circle" iconSize={7} wrapperStyle={{ fontSize: 10, color: C.sub }} />
                 <ReferenceLine y={USERS.adam.goalWeight}  stroke="#5a7a00" strokeDasharray="4 3" label={{ value: 'A', fill: '#5a7a00', fontSize: 8 }} />
-                <ReferenceLine y={USERS.tammy.goalWeight} stroke="#9d174d" strokeDasharray="4 3" label={{ value: 'T', fill: C.pink,    fontSize: 8 }} />
+                <ReferenceLine y={USERS.tammy.goalWeight} stroke="#9d174d" strokeDasharray="4 3" label={{ value: 'T', fill: C.pink, fontSize: 8 }} />
                 <Line type="monotone" dataKey="adam"     name="Adam"     stroke="#c4f135" strokeWidth={1.5} dot={false} />
                 <Line type="monotone" dataKey="adamAvg"  name="Adam 7d"  stroke="#c4f135" strokeWidth={2.5} dot={false} strokeDasharray="5 3" strokeOpacity={0.6} />
                 <Line type="monotone" dataKey="tammy"    name="Tammy"    stroke={C.pink}  strokeWidth={1.5} dot={false} />
@@ -594,46 +647,47 @@ function ProgressTab({ allLogs, workoutLogs, user, adamLogs, tammyLogs }: {
             ) : (
               <LineChart data={chartData} margin={{ top: 5, right: 8, bottom: 0, left: -22 }}>
                 <CartesianGrid strokeDasharray="3 3" stroke={C.border} />
-                <XAxis dataKey="date" tick={{ fill: C.sub, fontSize: 8 }} interval={6} tickFormatter={(v: string) => v?.slice(5) ?? v} />
+                <XAxis dataKey="date" tick={{ fill: C.sub, fontSize: 8 }} interval={xInterval(chartData.length)} tickFormatter={(v: string) => v?.slice(5) ?? v} />
                 <YAxis domain={['dataMin - 3', 'dataMax + 3']} tick={{ fill: C.sub, fontSize: 8 }} />
-               <Tooltip contentStyle={tt} />
+                <Tooltip contentStyle={tt} />
                 <ReferenceLine y={user.goalWeight} stroke={user.accentColor} strokeDasharray="5 3" label={{ value: 'GOAL', fill: user.accentColor, fontSize: 8 }} />
-                <Line type="monotone" dataKey="weight" name="weight" stroke={user.color} strokeWidth={1.5} dot={false} />
+                <Line type="monotone" dataKey="weight" name="weight" stroke={user.color} strokeWidth={1.5} dot={chartData.length <= 30} />
                 <Line type="monotone" dataKey="avg7"   name="7d avg" stroke={user.color} strokeWidth={2.5} dot={false} strokeDasharray="5 3" strokeOpacity={0.65} />
               </LineChart>
             )}
           </ResponsiveContainer>
         ) : (
-          <div style={{ textAlign: 'center', padding: '28px 0', color: C.muted, fontSize: 13 }}>Log your weight to build the chart</div>
+          <div style={{ textAlign: 'center', padding: '28px 0', color: C.muted, fontSize: 13 }}>No data for this range</div>
         )}
       </Card>
 
-      {allLogs.filter(l => l.weight).length > 0 && (
+      {/* Weight log table */}
+      {tableData.length > 0 && (
         <Card>
-          <SL>WEIGHT LOG</SL>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 }}>
+            <SL>WEIGHT LOG</SL>
+            <span style={{ fontSize: 10, color: C.muted, fontFamily: F.mono }}>{tableData.length} entries</span>
+          </div>
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr 1fr 1fr', gap: 4, marginBottom: 6 }}>
             {['Date', 'Weight', '7d Avg', 'BF%', 'Δ'].map(h => (
               <div key={h} style={{ fontSize: 9, color: C.muted, textTransform: 'uppercase', letterSpacing: 1, textAlign: 'center' }}>{h}</div>
             ))}
           </div>
-          {(() => {
-            const wa = addRollingAvg(allLogs.filter(l => l.weight))
-            return [...wa].reverse().slice(0, 20).map((l, i, arr) => {
-              const prev  = arr[i + 1]
-              const raw   = prev ? Number(l.weight) - Number(prev.weight) : null
-              const delta = raw !== null ? raw.toFixed(1) : '—'
-              const dc    = raw === null ? C.muted : raw < 0 ? '#c4f135' : C.red
-              return (
-                <div key={i} style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr 1fr 1fr', gap: 4, padding: '5px 0', borderBottom: `1px solid ${C.border}` }}>
-                  <div style={{ fontSize: 10, color: C.sub,  textAlign: 'center', fontFamily: F.mono }}>{l.date.slice(5)}</div>
-                  <div style={{ fontSize: 12, color: C.text, textAlign: 'center', fontFamily: F.mono }}>{l.weight}</div>
-                  <div style={{ fontSize: 11, color: user.color, textAlign: 'center', fontFamily: F.mono }}>{l.avg7}</div>
-                  <div style={{ fontSize: 12, color: C.sub,  textAlign: 'center', fontFamily: F.mono }}>{l.body_fat ?? '—'}</div>
-                  <div style={{ fontSize: 12, color: dc,     textAlign: 'center', fontFamily: F.mono }}>{raw !== null && raw > 0 ? `+${delta}` : delta}</div>
-                </div>
-              )
-            })
-          })()}
+          {tableData.map((l, i, arr) => {
+            const prev  = arr[i + 1]
+            const raw   = prev ? Number(l.weight) - Number(prev.weight) : null
+            const delta = raw !== null ? raw.toFixed(1) : '—'
+            const dc    = raw === null ? C.muted : raw < 0 ? '#c4f135' : C.red
+            return (
+              <div key={i} style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr 1fr 1fr', gap: 4, padding: '5px 0', borderBottom: `1px solid ${C.border}` }}>
+                <div style={{ fontSize: 10, color: C.sub,   textAlign: 'center', fontFamily: F.mono }}>{l.date.slice(5)}</div>
+                <div style={{ fontSize: 12, color: C.text,  textAlign: 'center', fontFamily: F.mono }}>{l.weight}</div>
+                <div style={{ fontSize: 11, color: user.color, textAlign: 'center', fontFamily: F.mono }}>{l.avg7}</div>
+                <div style={{ fontSize: 12, color: C.sub,   textAlign: 'center', fontFamily: F.mono }}>{l.body_fat ?? '—'}</div>
+                <div style={{ fontSize: 12, color: dc,      textAlign: 'center', fontFamily: F.mono }}>{raw !== null && raw > 0 ? `+${delta}` : delta}</div>
+              </div>
+            )
+          })}
         </Card>
       )}
     </>
