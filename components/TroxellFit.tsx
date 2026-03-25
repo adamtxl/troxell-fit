@@ -596,7 +596,7 @@ function ProgressTab({ allLogs, workoutLogs, user, adamLogs, tammyLogs }: {
                 <CartesianGrid strokeDasharray="3 3" stroke={C.border} />
                 <XAxis dataKey="date" tick={{ fill: C.sub, fontSize: 8 }} interval={6} tickFormatter={(v: string) => v?.slice(5) ?? v} />
                 <YAxis domain={['dataMin - 3', 'dataMax + 3']} tick={{ fill: C.sub, fontSize: 8 }} />
-                <Tooltip contentStyle={tt} formatter={(v: unknown, n: string) => [v, n === 'avg7' ? '7d avg' : 'weight']} />
+               <Tooltip contentStyle={tt} />
                 <ReferenceLine y={user.goalWeight} stroke={user.accentColor} strokeDasharray="5 3" label={{ value: 'GOAL', fill: user.accentColor, fontSize: 8 }} />
                 <Line type="monotone" dataKey="weight" name="weight" stroke={user.color} strokeWidth={1.5} dot={false} />
                 <Line type="monotone" dataKey="avg7"   name="7d avg" stroke={user.color} strokeWidth={2.5} dot={false} strokeDasharray="5 3" strokeOpacity={0.65} />
