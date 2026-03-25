@@ -6,7 +6,7 @@ import type { DayLog, WorkoutLog, UserProfile } from '@/lib/types'
 // ── User profiles ─────────────────────────────────────────────────────────────
 const USERS: Record<string, UserProfile> = {
   adam: {
-    id: 'adam', name: 'Adam', startWeight: 338, goalWeight: 275, startBF: 44,
+    id: 'adam', name: 'Adam', startWeight: 367, goalWeight: 275, startBF: 44,
     proteinMin: 180, proteinGoal: 190, calGoal: 880, waterGoal: 128,
     color: '#c4f135', accentColor: '#5a7a00',
     supplements: [
@@ -16,7 +16,7 @@ const USERS: Record<string, UserProfile> = {
     workouts: true,
   },
   tammy: {
-    id: 'tammy', name: 'Tammy', startWeight: 355.2, goalWeight: 310, startBF: null,
+    id: 'tammy', name: 'Tammy', startWeight: 382.2, goalWeight: 310, startBF: null,
     proteinMin: 120, proteinGoal: 130, calGoal: 1400, waterGoal: 96,
     color: '#f472b6', accentColor: '#9d174d',
     supplements: [
