@@ -1,5 +1,6 @@
 import { sql } from '@/lib/db'
 import TroxellFit from '@/components/TroxellFit'
+import type { DayLog, WorkoutLog } from '@/lib/types'
 
 async function getUserData(userId: string) {
   const [logs, workouts, settings] = await Promise.all([
@@ -8,9 +9,9 @@ async function getUserData(userId: string) {
     sql`SELECT workout_start_date::text as workout_start_date FROM settings WHERE user_id = ${userId}`,
   ])
   return {
-    logs,
-    workouts,
-    workoutStartDate: settings[0]?.workout_start_date || new Date().toISOString().split('T')[0],
+    logs: logs as unknown as DayLog[],
+    workouts: workouts as unknown as WorkoutLog[],
+    workoutStartDate: (settings[0]?.workout_start_date as string) || new Date().toISOString().split('T')[0],
   }
 }
 
