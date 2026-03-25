@@ -86,8 +86,8 @@ function Bar({ value, max, color, label, sublabel }: { value: number; max: numbe
 function Stat({ value, unit, label, color }: { value: string | number; unit: string; label: string; color: string }) {
   return (
     <div style={{ textAlign: 'center' }}>
-      <div style={{ fontFamily: F.display, fontSize: 38, color, lineHeight: 1 }}>{value}<span style={{ fontSize: 15, color: C.sub }}>{unit}</span></div>
-      <div style={{ fontSize: 8, color: C.sub, textTransform: 'uppercase', letterSpacing: 1.5, marginTop: 2 }}>{label}</div>
+      <div style={{ fontFamily: F.display, fontSize: 30, color, lineHeight: 1 }}>{value}<span style={{ fontSize: 13, color: C.sub }}>{unit}</span></div>
+      <div style={{ fontSize: 8, color: C.sub, textTransform: 'uppercase', letterSpacing: 1.2, marginTop: 2 }}>{label}</div>
     </div>
   )
 }
@@ -166,38 +166,87 @@ export default function TroxellFit({ initialAdamData, initialTammyData }: Props)
     { id: 'progress',  icon: '▲', label: 'PROGRESS'  },
   ]
 
+  const styleBlock = `
+    @import url('https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Barlow:wght@400;500;600&family=DM+Mono:wght@400;500&display=swap');
+    *{box-sizing:border-box;margin:0;padding:0;}
+    input[type=number]::-webkit-inner-spin-button{-webkit-appearance:none;}
+    input[type=number]{-moz-appearance:textfield;}
+    ::-webkit-scrollbar{width:3px;}
+    ::-webkit-scrollbar-thumb{background:#333;border-radius:2px;}
+    .tf-app{display:flex;min-height:100vh;background:#080808;font-family:'Barlow',sans-serif;}
+    .tf-sidebar{display:none;}
+    .tf-main{flex:1;max-width:480px;margin:0 auto;padding-bottom:72px;width:100%;}
+    .tf-mobile-header{display:flex;align-items:center;justify-content:space-between;background:#111;border-bottom:1px solid #222;padding:10px 14px;position:sticky;top:0;z-index:20;}
+    .tf-bottom-nav{display:flex;position:fixed;bottom:0;left:50%;transform:translateX(-50%);width:100%;max-width:480px;background:#111;border-top:1px solid #222;z-index:20;}
+    .tf-content{padding:16px;}
+    @media(min-width:768px){
+      .tf-sidebar{display:flex;flex-direction:column;width:220px;min-height:100vh;position:fixed;top:0;left:0;background:#111;border-right:1px solid #222;padding:28px 18px;z-index:30;gap:6px;}
+      .tf-main{max-width:none;margin-left:220px;padding-bottom:32px;width:calc(100% - 220px);}
+      .tf-mobile-header{display:none;}
+      .tf-bottom-nav{display:none;}
+      .tf-content{padding:28px 32px;max-width:960px;}
+    }
+  `
+
   return (
     <>
-      <style>{`@import url('https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Barlow:wght@400;500;600&family=DM+Mono:wght@400;500&display=swap');*{box-sizing:border-box;margin:0;padding:0;}input[type=number]::-webkit-inner-spin-button{-webkit-appearance:none;}input[type=number]{-moz-appearance:textfield;}::-webkit-scrollbar{width:3px;}::-webkit-scrollbar-thumb{background:${C.muted};border-radius:2px;}`}</style>
-      <div style={{ background: C.bg, minHeight: '100vh', fontFamily: F.body, maxWidth: 480, margin: '0 auto', paddingBottom: 72 }}>
+      <style>{styleBlock}</style>
+      <div className="tf-app">
 
-        {/* Header */}
-        <div style={{ background: C.surface, borderBottom: `1px solid ${C.border}`, padding: '10px 14px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', position: 'sticky', top: 0, zIndex: 20 }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-            <span style={{ fontFamily: F.display, fontSize: 20, color: user.color, letterSpacing: 3 }}>TROXELL FIT</span>
-            <div style={{ display: 'flex', background: C.card, border: `1px solid ${C.border}`, borderRadius: 20, padding: 2, gap: 2 }}>
-              {Object.values(USERS).map(u => (
-                <button key={u.id} onClick={() => { setUid(u.id as 'adam' | 'tammy'); setTab('today'); setActiveWorkout(null) }}
-                  style={{ padding: '4px 12px', borderRadius: 16, border: 'none', background: uid === u.id ? u.color : 'transparent', color: uid === u.id ? '#000' : C.sub, cursor: 'pointer', fontFamily: F.display, fontSize: 13, letterSpacing: 1.5, transition: 'all 0.15s' }}>
-                  {u.name.toUpperCase()}
-                </button>
-              ))}
+        {/* Sidebar — desktop only */}
+        <aside className="tf-sidebar">
+          <div style={{ fontFamily: F.display, fontSize: 24, letterSpacing: 3, color: user.color, marginBottom: 6 }}>TROXELL FIT</div>
+          <div style={{ display: 'flex', background: C.card, border: `1px solid ${C.border}`, borderRadius: 20, padding: 2, gap: 2, marginBottom: 20 }}>
+            {Object.values(USERS).map(u => (
+              <button key={u.id} onClick={() => { setUid(u.id as 'adam' | 'tammy'); setTab('today'); setActiveWorkout(null) }}
+                style={{ flex: 1, padding: '5px 10px', borderRadius: 16, border: 'none', background: uid === u.id ? u.color : 'transparent', color: uid === u.id ? '#000' : C.sub, cursor: 'pointer', fontFamily: F.display, fontSize: 13, letterSpacing: 1.5, transition: 'all 0.15s' }}>
+                {u.name.toUpperCase()}
+              </button>
+            ))}
+          </div>
+          {tabs.map(t => (
+            <button key={t.id} onClick={() => setTab(t.id)}
+              style={{ display: 'flex', alignItems: 'center', gap: 10, width: '100%', padding: '10px 14px', borderRadius: 8, border: `1px solid ${tab === t.id ? user.color + '40' : 'transparent'}`, background: tab === t.id ? user.color + '14' : 'none', cursor: 'pointer', fontFamily: F.display, fontSize: 16, letterSpacing: 2, color: tab === t.id ? user.color : C.sub, transition: 'all 0.15s', textAlign: 'left' }}>
+              <span style={{ fontSize: 18 }}>{t.icon}</span>
+              <span>{t.label}</span>
+            </button>
+          ))}
+          <div style={{ marginTop: 'auto', paddingTop: 20, borderTop: `1px solid ${C.border}` }}>
+            <div style={{ fontFamily: F.mono, fontSize: 28, color: daysLeft <= 14 ? C.orange : C.text, lineHeight: 1 }}>{daysLeft}<span style={{ fontSize: 14, color: C.sub }}>d</span></div>
+            <div style={{ fontSize: 9, color: C.sub, textTransform: 'uppercase', letterSpacing: 1.5, marginTop: 3 }}>to cruise · apr 21</div>
+          </div>
+        </aside>
+
+        {/* Main content */}
+        <div className="tf-main">
+          <div className="tf-mobile-header">
+            <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+              <span style={{ fontFamily: F.display, fontSize: 20, color: user.color, letterSpacing: 3 }}>TROXELL FIT</span>
+              <div style={{ display: 'flex', background: C.card, border: `1px solid ${C.border}`, borderRadius: 20, padding: 2, gap: 2 }}>
+                {Object.values(USERS).map(u => (
+                  <button key={u.id} onClick={() => { setUid(u.id as 'adam' | 'tammy'); setTab('today'); setActiveWorkout(null) }}
+                    style={{ padding: '4px 12px', borderRadius: 16, border: 'none', background: uid === u.id ? u.color : 'transparent', color: uid === u.id ? '#000' : C.sub, cursor: 'pointer', fontFamily: F.display, fontSize: 13, letterSpacing: 1.5, transition: 'all 0.15s' }}>
+                    {u.name.toUpperCase()}
+                  </button>
+                ))}
+              </div>
+            </div>
+            <div style={{ textAlign: 'right' }}>
+              <div style={{ fontFamily: F.mono, fontSize: 20, color: daysLeft <= 14 ? C.orange : C.text, lineHeight: 1 }}>{daysLeft}d</div>
+              <div style={{ fontSize: 8, color: C.sub, textTransform: 'uppercase', letterSpacing: 1 }}>cruise · apr 21</div>
             </div>
           </div>
-          <div style={{ textAlign: 'right' }}>
-            <div style={{ fontFamily: F.mono, fontSize: 20, color: daysLeft <= 14 ? C.orange : C.text, lineHeight: 1 }}>{daysLeft}d</div>
-            <div style={{ fontSize: 8, color: C.sub, textTransform: 'uppercase', letterSpacing: 1 }}>cruise · apr 21</div>
+
+          <div className="tf-content">
+            {tab === 'today'     && <TodayTab     log={todayLog} save={saveLog} user={user} phase={phase} week={week} daysLeft={daysLeft} allLogs={allLogs} />}
+            {tab === 'nutrition' && <NutritionTab log={todayLog} save={saveLog} user={user} />}
+            {tab === 'workout'   && <WorkoutTab   workoutLogs={wLogs} save={saveWorkout} active={activeWorkout} setActive={setActiveWorkout} wType={wType} setWType={setWType} phase={phase} week={week} />}
+            {tab === 'progress'  && <ProgressTab  allLogs={allLogs} workoutLogs={wLogs} user={user} adamLogs={adamLogs} tammyLogs={tammyLogs} />}
           </div>
         </div>
 
-        <div style={{ padding: 16 }}>
-          {tab === 'today'     && <TodayTab     log={todayLog} save={saveLog} user={user} phase={phase} week={week} daysLeft={daysLeft} allLogs={allLogs} />}
-          {tab === 'nutrition' && <NutritionTab log={todayLog} save={saveLog} user={user} />}
-          {tab === 'workout'   && <WorkoutTab   workoutLogs={wLogs} save={saveWorkout} active={activeWorkout} setActive={setActiveWorkout} wType={wType} setWType={setWType} phase={phase} week={week} />}
-          {tab === 'progress'  && <ProgressTab  allLogs={allLogs} workoutLogs={wLogs} user={user} adamLogs={adamLogs} tammyLogs={tammyLogs} />}
-        </div>
-
-        <nav style={{ position: 'fixed', bottom: 0, left: '50%', transform: 'translateX(-50%)', width: '100%', maxWidth: 480, background: C.surface, borderTop: `1px solid ${C.border}`, display: 'flex', zIndex: 20 }}>
+        {/* Bottom nav — mobile only */}
+        <nav className="tf-bottom-nav">
           {tabs.map(t => (
             <button key={t.id} onClick={() => setTab(t.id)} style={{ flex: 1, padding: '9px 4px 7px', background: 'none', border: 'none', cursor: 'pointer', color: tab === t.id ? user.color : C.muted, transition: 'color 0.15s' }}>
               <div style={{ fontSize: 17, lineHeight: 1 }}>{t.icon}</div>
@@ -205,6 +254,7 @@ export default function TroxellFit({ initialAdamData, initialTammyData }: Props)
             </button>
           ))}
         </nav>
+
       </div>
     </>
   )
@@ -234,11 +284,12 @@ function TodayTab({ log, save, user, phase, week, daysLeft, allLogs }: { log: Da
 
       <Card>
         <div style={{ display: 'flex', justifyContent: 'space-around', marginBottom: 14 }}>
-          <Stat value={curW}                           unit=" lbs" label="Current" color={C.text} />
-          <Stat value={lost >= 0 ? `-${lost}` : '0'}  unit=" lbs" label="Lost"    color={user.color} />
-          <Stat value={toGo > 0 ? toGo : '✓'}         unit={toGo > 0 ? ' lbs' : ''} label="To Go" color={toGo > 0 ? C.orange : user.color} />
+          <Stat value={user.startWeight}                   unit=" lbs" label="Start"   color={C.sub} />
+          <Stat value={curW}                               unit=" lbs" label="Current" color={C.text} />
+          <Stat value={lost >= 0 ? `-${lost}` : '0'}      unit=" lbs" label="Lost"    color={user.color} />
+          <Stat value={toGo > 0 ? toGo : '✓'}             unit={toGo > 0 ? ' lbs' : ''} label="To Go" color={toGo > 0 ? C.orange : user.color} />
         </div>
-        <Bar value={Math.max(0, user.startWeight - curW)} max={user.startWeight - user.goalWeight} label="Goal progress" sublabel={`${curW} → ${user.goalWeight} lbs`} color={user.color} />
+        <Bar value={Math.max(0, user.startWeight - curW)} max={user.startWeight - user.goalWeight} label="Goal progress" sublabel={`${user.startWeight} → ${user.goalWeight} lbs`} color={user.color} />
       </Card>
 
       <Card>
@@ -545,7 +596,7 @@ function ProgressTab({ allLogs, workoutLogs, user, adamLogs, tammyLogs }: {
                 <CartesianGrid strokeDasharray="3 3" stroke={C.border} />
                 <XAxis dataKey="date" tick={{ fill: C.sub, fontSize: 8 }} interval={6} tickFormatter={(v: string) => v?.slice(5) ?? v} />
                 <YAxis domain={['dataMin - 3', 'dataMax + 3']} tick={{ fill: C.sub, fontSize: 8 }} />
-                <Tooltip contentStyle={tt} />
+                <Tooltip contentStyle={tt} formatter={(v: unknown, n: string) => [v, n === 'avg7' ? '7d avg' : 'weight']} />
                 <ReferenceLine y={user.goalWeight} stroke={user.accentColor} strokeDasharray="5 3" label={{ value: 'GOAL', fill: user.accentColor, fontSize: 8 }} />
                 <Line type="monotone" dataKey="weight" name="weight" stroke={user.color} strokeWidth={1.5} dot={false} />
                 <Line type="monotone" dataKey="avg7"   name="7d avg" stroke={user.color} strokeWidth={2.5} dot={false} strokeDasharray="5 3" strokeOpacity={0.65} />
