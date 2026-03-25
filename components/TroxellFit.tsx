@@ -16,7 +16,7 @@ const USERS: Record<string, UserProfile> = {
     workouts: true,
   },
   tammy: {
-    id: 'tammy', name: 'Tammy', startWeight: 355.2, goalWeight: 310, startBF: null,
+    id: 'tammy', name: 'Tammy', startWeight: 355.2, goalWeight: 299, startBF: null,
     proteinMin: 120, proteinGoal: 130, calGoal: 1400, waterGoal: 96,
     color: '#f472b6', accentColor: '#9d174d',
     supplements: [
