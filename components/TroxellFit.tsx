@@ -549,6 +549,10 @@ function ProgressTab({ allLogs, workoutLogs, user, adamLogs, tammyLogs }: {
   const lost     = +(user.startWeight - curW).toFixed(1)
   const toGo     = +(curW - user.goalWeight).toFixed(1)
 
+  const weightVals   = allLogs.map(l => Number(l.weight)).filter(Boolean)
+  const lowestWeight = weightVals.length ? Math.min(...weightVals) : null
+  const lowestDate   = lowestWeight !== null ? allLogs.find(l => Number(l.weight) === lowestWeight)?.date?.slice(5) : null
+
   // Range-filtered for adherence stats
   const rangeLogs  = filterByRange(allLogs, activeDays)
   const protDays   = rangeLogs.filter(l => l.protein >= user.proteinMin).length
@@ -580,6 +584,7 @@ function ProgressTab({ allLogs, workoutLogs, user, adamLogs, tammyLogs }: {
   const stats = [
     { label: 'Lost',         value: lost,                     unit: 'lbs', color: user.color },
     { label: 'To Go',        value: toGo > 0 ? toGo : '✓',   unit: toGo > 0 ? 'lbs' : '', color: toGo > 0 ? C.orange : user.color },
+    { label: lowestDate ? `Low · ${lowestDate}` : 'All-Time Low', value: lowestWeight ?? '—', unit: lowestWeight ? ' lbs' : '', color: '#facc15' },
     { label: 'Protein Days', value: protDays,                 unit: '',    color: C.blue },
     ...(user.workouts ? [{ label: 'Workouts', value: workoutLogs.length, unit: '', color: user.color }] : []),
     { label: 'Cal Days OK',  value: calDays,                  unit: '',    color: C.blue },
@@ -674,13 +679,14 @@ function ProgressTab({ allLogs, workoutLogs, user, adamLogs, tammyLogs }: {
             ))}
           </div>
           {tableData.map((l, i, arr) => {
-            const prev  = arr[i + 1]
-            const raw   = prev ? Number(l.weight) - Number(prev.weight) : null
-            const delta = raw !== null ? raw.toFixed(1) : '—'
-            const dc    = raw === null ? C.muted : raw < 0 ? '#c4f135' : C.red
+            const prev   = arr[i + 1]
+            const raw    = prev ? Number(l.weight) - Number(prev.weight) : null
+            const delta  = raw !== null ? raw.toFixed(1) : '—'
+            const dc     = raw === null ? C.muted : raw < 0 ? '#c4f135' : C.red
+            const isLow  = lowestWeight !== null && Number(l.weight) === lowestWeight
             return (
-              <div key={i} style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr 1fr 1fr', gap: 4, padding: '5px 0', borderBottom: `1px solid ${C.border}` }}>
-                <div style={{ fontSize: 10, color: C.sub,   textAlign: 'center', fontFamily: F.mono }}>{l.date.slice(5)}</div>
+              <div key={i} style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr 1fr 1fr', gap: 4, padding: '5px 0', borderBottom: `1px solid ${C.border}`, background: isLow ? '#facc1514' : 'transparent' }}>
+                <div style={{ fontSize: 10, color: C.sub,   textAlign: 'center', fontFamily: F.mono }}>{l.date.slice(5)}{isLow ? ' 🏆' : ''}</div>
                 <div style={{ fontSize: 12, color: C.text,  textAlign: 'center', fontFamily: F.mono }}>{l.weight}</div>
                 <div style={{ fontSize: 11, color: user.color, textAlign: 'center', fontFamily: F.mono }}>{l.avg7}</div>
                 <div style={{ fontSize: 12, color: C.sub,   textAlign: 'center', fontFamily: F.mono }}>{l.body_fat ?? '—'}</div>
