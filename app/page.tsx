@@ -2,6 +2,8 @@ import { sql } from '@/lib/db'
 import TroxellFit from '@/components/TroxellFit'
 import type { DayLog, WorkoutLog } from '@/lib/types'
 
+export const dynamic = 'force-dynamic'
+
 async function getUserData(userId: string) {
   const [logs, workouts, settings] = await Promise.all([
     sql`SELECT date::text, weight, body_fat, calories, protein, water, sodium, potassium, magnesium, creatine, zepbound FROM logs WHERE user_id = ${userId} ORDER BY date ASC`,
